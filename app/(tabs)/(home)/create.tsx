@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'android' ? 48 : 60,
     paddingBottom: 16,
     backgroundColor: colors.primary,
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',

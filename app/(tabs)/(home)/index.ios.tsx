@@ -1,6 +1,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MessageTemplate } from '@/types/template';
@@ -92,96 +93,102 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Mẫu Tin Nhắn</Text>
-          <TouchableOpacity 
-            style={styles.addButton} 
-            onPress={handleCreateTemplate}
-            activeOpacity={0.7}
-          >
-            <IconSymbol 
-              ios_icon_name="plus" 
-              android_material_icon_name="add" 
-              size={24} 
-              color={colors.card} 
-            />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.headerTitle}>Mẫu Tin Nhắn</Text>
+            <TouchableOpacity 
+              style={styles.addButton} 
+              onPress={handleCreateTemplate}
+              activeOpacity={0.7}
+            >
+              <IconSymbol 
+                ios_icon_name="plus" 
+                android_material_icon_name="add" 
+                size={24} 
+                color={colors.card} 
+              />
+            </TouchableOpacity>
+          </View>
+          
+          {templates.length > 0 && (
+            <View style={styles.searchContainer}>
+              <IconSymbol 
+                ios_icon_name="magnifyingglass" 
+                android_material_icon_name="search" 
+                size={20} 
+                color={colors.textSecondary} 
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Tìm kiếm mẫu tin..."
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={handleSearch}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={clearSearch} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <IconSymbol 
+                    ios_icon_name="xmark.circle.fill" 
+                    android_material_icon_name="cancel" 
+                    size={20} 
+                    color={colors.textSecondary} 
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
-        
-        {templates.length > 0 && (
-          <View style={styles.searchContainer}>
-            <IconSymbol 
-              ios_icon_name="magnifyingglass" 
-              android_material_icon_name="search" 
-              size={20} 
-              color={colors.textSecondary} 
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Tìm kiếm mẫu tin..."
-              placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={clearSearch} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <IconSymbol 
-                  ios_icon_name="xmark.circle.fill" 
-                  android_material_icon_name="cancel" 
-                  size={20} 
-                  color={colors.textSecondary} 
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Đang tải...</Text>
+          </View>
+        ) : filteredTemplates.length === 0 ? (
+          <EmptyState 
+            message={searchQuery ? "Không tìm thấy mẫu tin nào" : "Chưa có mẫu tin nhắn nào. Nhấn nút + để tạo mẫu mới."} 
+            icon="doc.text"
+          />
+        ) : (
+          <View style={styles.listWrapper}>
+            <FlatList
+              data={filteredTemplates}
+              renderItem={({ item }) => (
+                <TemplateCard
+                  template={item}
+                  onPress={() => handleTemplatePress(item)}
+                  onDelete={() => handleDeleteTemplate(item.id, item.name)}
                 />
-              </TouchableOpacity>
-            )}
+              )}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContainer}
+              showsVerticalScrollIndicator={false}
+            />
+            <View style={styles.statsBar}>
+              <Text style={styles.statsText}>
+                {filteredTemplates.length} mẫu tin {searchQuery ? '(đã lọc)' : ''}
+              </Text>
+            </View>
           </View>
         )}
       </View>
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Đang tải...</Text>
-        </View>
-      ) : filteredTemplates.length === 0 ? (
-        <EmptyState 
-          message={searchQuery ? "Không tìm thấy mẫu tin nào" : "Chưa có mẫu tin nhắn nào. Nhấn nút + để tạo mẫu mới."} 
-          icon="doc.text"
-        />
-      ) : (
-        <View style={styles.listWrapper}>
-          <FlatList
-            data={filteredTemplates}
-            renderItem={({ item }) => (
-              <TemplateCard
-                template={item}
-                onPress={() => handleTemplatePress(item)}
-                onDelete={() => handleDeleteTemplate(item.id, item.name)}
-              />
-            )}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          />
-          <View style={styles.statsBar}>
-            <Text style={styles.statsText}>
-              {filteredTemplates.length} mẫu tin {searchQuery ? '(đã lọc)' : ''}
-            </Text>
-          </View>
-        </View>
-      )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.primary,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 16,
     paddingHorizontal: 20,
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
@@ -229,7 +236,7 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 140,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -242,7 +249,7 @@ const styles = StyleSheet.create({
   },
   statsBar: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 20,
     left: 20,
     right: 20,
     backgroundColor: colors.card,
