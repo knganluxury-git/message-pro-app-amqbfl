@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { MessageTemplate, TemplateField } from '@/types/template';
 import { loadTemplates } from '@/utils/templateStorage';
 import { generateMessage } from '@/utils/templateParser';
@@ -67,7 +68,10 @@ export default function GenerateMessageScreen() {
   const handleCopyToClipboard = async () => {
     try {
       await Clipboard.setStringAsync(generatedMessage);
-      Alert.alert('Thành công', 'Đã sao chép tin nhắn vào clipboard');
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      Alert.alert('Thành công', 'Đã sao chép tin nhắn vào clipboard. Bạn có thể dán vào Zalo hoặc ứng dụng khác.');
     } catch (error) {
       console.error('Error copying to clipboard:', error);
       Alert.alert('Lỗi', 'Không thể sao chép tin nhắn');
@@ -87,16 +91,23 @@ export default function GenerateMessageScreen() {
             setFields(prevFields =>
               prevFields.map(field => ({ ...field, value: '' }))
             );
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
           },
         },
       ]
     );
   };
 
+  const isAllFieldsFilled = fields.every(field => field.value.trim() !== '');
+
   if (!template) {
     return (
       <View style={styles.container}>
-        <Text style={styles.loadingText}>Đang tải...</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang tải...</Text>
+        </View>
       </View>
     );
   }
@@ -138,12 +149,23 @@ export default function GenerateMessageScreen() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Điền thông tin</Text>
+          <View style={styles.sectionHeader}>
+            <IconSymbol 
+              ios_icon_name="pencil.circle.fill" 
+              android_material_icon_name="edit" 
+              size={24} 
+              color={colors.primary} 
+            />
+            <Text style={styles.sectionTitle}>Điền thông tin</Text>
+          </View>
           {fields.map((field, index) => (
             <View key={field.id} style={styles.fieldContainer}>
-              <Text style={styles.fieldLabel}>{field.name}</Text>
+              <Text style={styles.fieldLabel}>
+                {field.name} {field.value.trim() === '' && <Text style={styles.required}>*</Text>}
+              </Text>
               <TextInput
                 style={styles.fieldInput}
                 placeholder={field.placeholder}
@@ -157,11 +179,20 @@ export default function GenerateMessageScreen() {
 
         <View style={styles.section}>
           <View style={styles.previewHeader}>
-            <Text style={styles.sectionTitle}>Xem trước</Text>
+            <View style={styles.sectionHeader}>
+              <IconSymbol 
+                ios_icon_name="eye.circle.fill" 
+                android_material_icon_name="visibility" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <Text style={styles.sectionTitle}>Xem trước</Text>
+            </View>
             <TouchableOpacity 
-              style={styles.copyButton} 
+              style={[styles.copyButton, !isAllFieldsFilled && styles.copyButtonDisabled]} 
               onPress={handleCopyToClipboard}
               activeOpacity={0.7}
+              disabled={!isAllFieldsFilled}
             >
               <IconSymbol 
                 ios_icon_name="doc.on.doc.fill" 
@@ -175,6 +206,19 @@ export default function GenerateMessageScreen() {
           <View style={styles.previewContainer}>
             <Text style={styles.previewText}>{generatedMessage}</Text>
           </View>
+          {!isAllFieldsFilled && (
+            <View style={styles.warningCard}>
+              <IconSymbol 
+                ios_icon_name="exclamationmark.triangle.fill" 
+                android_material_icon_name="warning" 
+                size={18} 
+                color={colors.secondary} 
+              />
+              <Text style={styles.warningText}>
+                Vui lòng điền đầy đủ tất cả các trường để sao chép tin nhắn
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.infoCard}>
@@ -185,9 +229,11 @@ export default function GenerateMessageScreen() {
             color={colors.primary} 
           />
           <Text style={styles.infoText}>
-            Sau khi sao chép, bạn có thể dán tin nhắn vào Zalo hoặc ứng dụng khác.
+            Sau khi sao chép, bạn có thể dán tin nhắn vào Zalo hoặc ứng dụng khác. Định dạng văn bản sẽ được giữ nguyên.
           </Text>
         </View>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -206,6 +252,8 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     backgroundColor: colors.primary,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+    elevation: 8,
   },
   backButton: {
     width: 40,
@@ -232,22 +280,29 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     fontSize: 16,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 100,
   },
   section: {
     marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 16,
   },
   fieldContainer: {
     marginBottom: 16,
@@ -257,6 +312,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 8,
+  },
+  required: {
+    color: colors.error,
   },
   fieldInput: {
     backgroundColor: colors.card,
@@ -282,12 +340,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     boxShadow: '0px 2px 8px rgba(3, 169, 244, 0.3)',
     elevation: 3,
+    gap: 6,
+  },
+  copyButtonDisabled: {
+    opacity: 0.5,
   },
   copyButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.card,
-    marginLeft: 6,
   },
   previewContainer: {
     backgroundColor: colors.card,
@@ -302,6 +363,21 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 24,
   },
+  warningCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF9E6',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    alignItems: 'center',
+    gap: 8,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#856404',
+    lineHeight: 18,
+  },
   infoCard: {
     flexDirection: 'row',
     backgroundColor: colors.highlight,
@@ -309,12 +385,15 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 8,
     alignItems: 'flex-start',
+    gap: 12,
   },
   infoText: {
     flex: 1,
     fontSize: 14,
     color: colors.text,
-    marginLeft: 12,
     lineHeight: 20,
+  },
+  bottomSpacer: {
+    height: 100,
   },
 });

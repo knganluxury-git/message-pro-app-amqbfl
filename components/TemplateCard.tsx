@@ -12,6 +12,23 @@ interface TemplateCardProps {
 }
 
 export const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPress, onDelete }) => {
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return 'Hôm nay';
+    } else if (diffDays === 1) {
+      return 'Hôm qua';
+    } else if (diffDays < 7) {
+      return `${diffDays} ngày trước`;
+    } else {
+      return date.toLocaleDateString('vi-VN');
+    }
+  };
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.cardHeader}>
@@ -26,15 +43,37 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPress, o
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle} numberOfLines={1}>{template.name}</Text>
           <Text style={styles.cardSubtitle} numberOfLines={2}>
-            {template.content.substring(0, 80)}...
+            {template.content.length > 80 
+              ? `${template.content.substring(0, 80)}...` 
+              : template.content}
           </Text>
-          <Text style={styles.cardMeta}>
-            {template.fields.length} trường • {new Date(template.updatedAt).toLocaleDateString('vi-VN')}
-          </Text>
+          <View style={styles.cardFooter}>
+            <View style={styles.metaItem}>
+              <IconSymbol 
+                ios_icon_name="square.grid.3x3.fill" 
+                android_material_icon_name="grid_on" 
+                size={14} 
+                color={colors.textSecondary} 
+              />
+              <Text style={styles.cardMeta}>{template.fields.length} trường</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <IconSymbol 
+                ios_icon_name="clock.fill" 
+                android_material_icon_name="schedule" 
+                size={14} 
+                color={colors.textSecondary} 
+              />
+              <Text style={styles.cardMeta}>{formatDate(template.updatedAt)}</Text>
+            </View>
+          </View>
         </View>
         <TouchableOpacity 
           style={styles.deleteButton} 
-          onPress={onDelete}
+          onPress={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <IconSymbol 
@@ -83,8 +122,17 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 8,
     lineHeight: 20,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   cardMeta: {
     fontSize: 12,
@@ -92,5 +140,6 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 8,
+    marginLeft: 8,
   },
 });

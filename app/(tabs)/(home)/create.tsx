@@ -22,6 +22,7 @@ export default function CreateTemplateScreen() {
   const router = useRouter();
   const [templateName, setTemplateName] = useState('');
   const [templateContent, setTemplateContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
@@ -34,7 +35,12 @@ export default function CreateTemplateScreen() {
       return;
     }
 
+    if (isSaving) {
+      return;
+    }
+
     try {
+      setIsSaving(true);
       const fields = parseTemplateFields(templateContent);
       
       const newTemplate: MessageTemplate = {
@@ -49,15 +55,42 @@ export default function CreateTemplateScreen() {
       const existingTemplates = await loadTemplates();
       await saveTemplates([...existingTemplates, newTemplate]);
 
-      Alert.alert('Thành công', 'Đã lưu mẫu tin nhắn', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert(
+        'Thành công', 
+        'Đã lưu mẫu tin nhắn thành công!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.replace('/(tabs)/(home)');
+            },
+          },
+        ]
+      );
     } catch (error) {
       console.error('Error saving template:', error);
-      Alert.alert('Lỗi', 'Không thể lưu mẫu tin nhắn');
+      Alert.alert('Lỗi', 'Không thể lưu mẫu tin nhắn. Vui lòng thử lại.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (templateName.trim() || templateContent.trim()) {
+      Alert.alert(
+        'Xác nhận',
+        'Bạn có muốn hủy? Các thay đổi sẽ không được lưu.',
+        [
+          { text: 'Tiếp tục chỉnh sửa', style: 'cancel' },
+          {
+            text: 'Hủy',
+            style: 'destructive',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } else {
+      router.back();
     }
   };
 
@@ -69,7 +102,7 @@ export default function CreateTemplateScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
-          onPress={() => router.back()}
+          onPress={handleCancel}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <IconSymbol 
@@ -87,6 +120,7 @@ export default function CreateTemplateScreen() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.infoCard}>
           <IconSymbol 
@@ -102,7 +136,7 @@ export default function CreateTemplateScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Tên mẫu tin nhắn</Text>
+          <Text style={styles.label}>Tên mẫu tin nhắn *</Text>
           <TextInput
             style={styles.input}
             placeholder="Ví dụ: Xác nhận đơn hàng"
@@ -113,7 +147,7 @@ export default function CreateTemplateScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Nội dung mẫu</Text>
+          <Text style={styles.label}>Nội dung mẫu *</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Nhập nội dung mẫu tin nhắn...&#10;&#10;Ví dụ:&#10;Xin chào {tên khách hàng},&#10;&#10;Cảm ơn bạn đã đặt hàng {sản phẩm}.&#10;Tổng tiền: {số tiền}&#10;&#10;Trân trọng!"
@@ -127,9 +161,10 @@ export default function CreateTemplateScreen() {
         </View>
 
         <TouchableOpacity 
-          style={styles.saveButton} 
+          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} 
           onPress={handleSaveTemplate}
           activeOpacity={0.8}
+          disabled={isSaving}
         >
           <IconSymbol 
             ios_icon_name="checkmark.circle.fill" 
@@ -137,8 +172,20 @@ export default function CreateTemplateScreen() {
             size={20} 
             color={colors.card} 
           />
-          <Text style={styles.saveButtonText}>Lưu Mẫu</Text>
+          <Text style={styles.saveButtonText}>
+            {isSaving ? 'Đang lưu...' : 'Lưu Mẫu'}
+          </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.cancelButton} 
+          onPress={handleCancel}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.cancelButtonText}>Hủy</Text>
+        </TouchableOpacity>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -157,6 +204,8 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     backgroundColor: colors.primary,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+    elevation: 8,
   },
   backButton: {
     width: 40,
@@ -177,7 +226,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
   },
   infoCard: {
     flexDirection: 'row',
@@ -227,10 +275,31 @@ const styles = StyleSheet.create({
     boxShadow: '0px 4px 12px rgba(33, 150, 243, 0.3)',
     elevation: 4,
   },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
   saveButtonText: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.card,
     marginLeft: 8,
+  },
+  cancelButton: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  bottomSpacer: {
+    height: 100,
   },
 });
